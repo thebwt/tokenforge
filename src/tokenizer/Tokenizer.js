@@ -401,7 +401,6 @@ export default class Tokenizer extends HandlebarsApplicationMixin(ApplicationV2)
       options: this.tokenOptions,
       canUpload: game.user && game.user.can("FILES_UPLOAD"),
       canBrowse: game.user && game.user.can("FILES_BROWSE"),
-      tokenVariantsEnabled: game.user && game.user.can("FILES_BROWSE") && game.modules.get("token-variants")?.active,
       customImageSources,
       frames,
       masks,
@@ -769,13 +768,6 @@ export default class Tokenizer extends HandlebarsApplicationMixin(ApplicationV2)
       case "color": {
         const defaultColor = game.settings.get(CONSTANTS.MODULE_ID, "default-color");
         view.addColorLayer({ color: defaultColor });
-        break;
-      }
-      case "tokenVariants": {
-        game.modules.get('token-variants').api.showArtSelect(this.tokenOptions.name, {
-          callback: (imgSrc) => Utils.download(imgSrc).then((img) => view.addImageLayer(img, { type: "image" })),
-          searchType: target.dataset.target === "avatar" ? "Portrait" : "Token",
-        });
         break;
       }
       case "locations": {

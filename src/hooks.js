@@ -533,11 +533,28 @@ function addTokenizerContentOption(contextOptions) {
   });
 }
 
+function registerTokenVariantsImageSource() {
+  if (!game.modules.get("token-variants")?.active) return;
+  Tokenizer.registerImageSource({
+    id: "token-variants",
+    label: game.i18n.localize("vtta-tokenizer.label.UseFoundryTokenVariants"),
+    icon: "fas fa-images",
+    enabled: () => game.user && game.user.can("FILES_BROWSE"),
+    onSelect: ({ type, name, callback }) => {
+      game.modules.get("token-variants").api.showArtSelect(name, {
+        callback,
+        searchType: type === "avatar" ? "Portrait" : "Token",
+      });
+    },
+  });
+}
+
 export function ready() {
   logger.info("Ready Hook Called");
   fixUploadLocation();
   linkSheets();
   exposeAPI();
+  registerTokenVariantsImageSource();
 }
 
 Hooks.on('getActorDirectoryEntryContext', (html, contextOptions) => {
