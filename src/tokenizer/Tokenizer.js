@@ -345,17 +345,64 @@ export default class Tokenizer extends HandlebarsApplicationMixin(ApplicationV2)
 
   /* -------------------------------------------- */
 
+  static customImageSources = [];
+
+  /**
+   * Register an external image source, adding a button to the avatar and
+   * token menus that other modules can use to hand back an image.
+   *
+   * source.id: string, unique identifier. Re-registering the same id
+   *   replaces the existing entry.
+   * source.label: string, used as the button title.
+   * source.icon: string, font-awesome classes for the button icon.
+   * source.onSelect({ type, name, callback, app }): function, called when the
+   *   button is clicked. type is "avatar" or "token", name is the current
+   *   tokenOptions.name, app is the Tokenizer application instance.
+   *   callback accepts either a string (a URL/path,
+   *   downloaded via Utils.download before being added as a layer) or an
+   *   HTMLImageElement/Image instance (added as a layer directly).
+   * source.enabled(): optional function returning a boolean, evaluated
+   *   each render to decide whether the button should be shown. Defaults
+   *   to always enabled.
+   */
+  static registerImageSource(source) {
+    if (!source || typeof source.id !== "string" || typeof source.label !== "string"
+      || typeof source.icon !== "string" || typeof source.onSelect !== "function") {
+      logger.warn("registerImageSource called with an invalid source", source);
+      return;
+    }
+    const existingIndex = Tokenizer.customImageSources.findIndex((s) => s.id === source.id);
+    if (existingIndex === -1) {
+      Tokenizer.customImageSources.push(source);
+    } else {
+      logger.debug(`Replacing already registered image source "${source.id}"`);
+      Tokenizer.customImageSources[existingIndex] = source;
+    }
+  }
+
   async _prepareContext() {
     const frames = await this.getFrames();
     const masks = await this.getMasks();
     const pasteTarget = game.settings.get(CONSTANTS.MODULE_ID, "paste-target") ?? "token";
     const pasteTargetName = Utils.titleString(pasteTarget);
+    const customImageSources = Tokenizer.customImageSources
+      .filter((source) => {
+        if (!source.enabled) return true;
+        try {
+          return source.enabled();
+        } catch (error) {
+          logger.warn(`Custom image source "${source.id}" enabled() threw, hiding it`, error);
+          return false;
+        }
+      })
+      .map((source) => ({ id: source.id, label: source.label, icon: source.icon }));
 
     return {
       options: this.tokenOptions,
       canUpload: game.user && game.user.can("FILES_UPLOAD"),
       canBrowse: game.user && game.user.can("FILES_BROWSE"),
       tokenVariantsEnabled: game.user && game.user.can("FILES_BROWSE") && game.modules.get("token-variants")?.active,
+      customImageSources,
       frames,
       masks,
       pasteTarget,
@@ -734,6 +781,34 @@ export default class Tokenizer extends HandlebarsApplicationMixin(ApplicationV2)
       case "locations": {
         const locations = new TokenizerSaveLocations(this);
         locations.render({ force: true });
+        break;
+      }
+      case "custom-source": {
+        const source = Tokenizer.customImageSources.find((s) => s.id === target.dataset.sourceId);
+        if (source) {
+          try {
+            source.onSelect({
+              type: target.dataset.target,
+              name: this.tokenOptions.name,
+              app: this,
+              callback: (image) => {
+                if (Utils.isString(image)) {
+                  Utils.download(image)
+                    .then((img) => view.addImageLayer(img, { type: "image" }))
+                    .catch((error) => {
+                      logger.error("Error fetching image", error);
+                      ui.notifications.error(error);
+                    });
+                } else {
+                  view.addImageLayer(image, { type: "image" });
+                }
+              },
+            });
+          } catch (error) {
+            logger.error(`Custom image source "${source.id}" onSelect threw`, error);
+            ui.notifications.error(error);
+          }
+        }
         break;
       }
       // no default

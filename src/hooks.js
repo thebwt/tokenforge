@@ -441,6 +441,7 @@ function exposeAPI() {
     tokenizeDoc,
     updateSceneTokenImg,
     autoToken,
+    registerImageSource: Tokenizer.registerImageSource,
   };
 
   window.Tokenizer = API;

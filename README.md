@@ -210,6 +210,29 @@ game.modules.get("vtta-tokenizer").api.tokenizeSceneToken({ token: dragon, actor
 ```
 
 
+## Registering a custom image source
+
+Other modules can add their own button to the avatar and token menus by
+calling `registerImageSource(source)`. Clicking the button hands control to
+the registering module, which resolves an image back to Tokenizer.
+
+```javascript
+game.modules.get("vtta-tokenizer").api.registerImageSource({
+  id: "my-module",
+  label: "Use My Module",
+  icon: "fas fa-images",
+  enabled: () => game.user.can("FILES_BROWSE"),
+  onSelect: ({ type, name, callback, app }) => {
+    // type is "avatar" or "token", name is the current token's name
+    MyModule.pickImage({ type, name }).then((result) => callback(result));
+  },
+});
+```
+
+* `id` must be unique. Registering again with the same `id` replaces the previous source.
+* `enabled` is optional and is re-evaluated every time the Tokenizer window renders; omit it to always show the button.
+* `callback` accepts either a URL/path string (downloaded before being added as a layer) or an `Image`/`HTMLImageElement` instance (added as a layer directly, useful for `data:`/`blob:` images).
+
 ## How to I call auto Tokenize?
 
 This applies the default frame to the current token image.
