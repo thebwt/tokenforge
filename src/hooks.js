@@ -9,6 +9,9 @@ import { registerSettings } from "./settings.js";
 
 export function init() {
   registerSettings();
+  // Expose the API during init so other modules can call registerImageSource
+  // from their own ready hooks regardless of module load order.
+  exposeAPI();
 }
 
 function getAvatarKey() {
@@ -553,7 +556,6 @@ export function ready() {
   logger.info("Ready Hook Called");
   fixUploadLocation();
   linkSheets();
-  exposeAPI();
   registerTokenVariantsImageSource();
 }
 
